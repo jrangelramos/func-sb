@@ -59,8 +59,7 @@ func (f FunctionHttpResponsivenessValidator) Validate(t *testing.T, project Func
 		t.Fatalf("Expected status code 200, received %v", resp.StatusCode)
 	}
 	if f.expects != "" && !strings.Contains(string(body), f.expects) {
-		t.Fatalf("Body does not contains expected sentence [%v]\n", f.expects)
-		t.Fatalf("Body received is: %v", string(body))
+		t.Fatalf("Body does not contains expected sentence [%v]\nBody received is: %v", f.expects, string(body))
 	}
 	if f.responseValidator != nil {
 		if err = f.responseValidator(string(body)); err != nil {
