@@ -1,4 +1,4 @@
-name: Func E2E Test ${{ matrix.runtime }}
+name: Func E2E Test
 
 on: [pull_request]
 
