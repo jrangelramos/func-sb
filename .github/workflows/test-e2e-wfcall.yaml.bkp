@@ -1,0 +1,41 @@
+name: 'Func E2E Test Runtime ${{ inputs.runtime }} '
+
+on:
+  workflow_call:
+    input:
+      runtime:
+        type: string
+        required: true
+        description: Function runtime to e2e test
+      always:
+        type: boolean
+        required: false
+        description: Should run always
+
+jobs:
+  e2e-test:
+    name: E2E Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Verify Changes on Templates
+        run: |
+          gh pr view ${{ github.event.number }} --json files -q .files[].path | grep -q ^templates/${{ inputs.runtime }} \
+          && echo "::set-env name=run_test::true" \
+          && echo "::set-output name=run_test::true" \
+          && echo "run_test=true" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cancel when no changes
+        run:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Install Binaries
+        run: ./hack/binaries.sh
+      - name: Allocate Cluster
+        run: ./hack/allocate.sh
+      - name: Local Registry
+        run: ./hack/registry.sh
+      - name: E2E Test ${{ inputs.runtime }}
+        run: make && make test-e2e-runtime runtime=${{ inputs.runtime

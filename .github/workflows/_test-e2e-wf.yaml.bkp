@@ -1,0 +1,31 @@
+name: 'Func E2E Test Runtime ${{ inputs.runtime }} '
+
+on:
+  workflow_call:
+    input:
+      runtime:
+        type: string
+        required: true
+        description: Function runtime to e2e test
+      always:
+        type: boolean
+        required: false
+        description: Should run always
+
+jobs:
+  e2e-test:
+    name: E2E Test ${{ inputs.runtime }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Install Binaries
+        run: ./hack/binaries.sh
+      - name: Allocate Cluster
+        run: ./hack/allocate.sh
+      - name: Local Registry
+        run: ./hack/registry.sh
+      - name: E2E Test
+        run: make && make test-e2e-runtime runtime=${{ inputs.runtime }

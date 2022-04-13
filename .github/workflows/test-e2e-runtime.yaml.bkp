@@ -1,0 +1,31 @@
+name: 'Func E2E Test Runtime ${{ github.event.label.name }}'
+
+on:
+  pull_request:
+
+jobs:
+  test-runtime:
+    if: ${{ github.event.label.name == matrix.runtime }}
+    name: E2E Test 
+    strategy:
+      matrix:
+        go: [1.16.x]
+        os: ["ubuntu-latest"]
+        runtime: ["go", "python", "springboot", "quarkus", "typescript"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        run: |
+          gh pr view ${{ github.event.number }} --json files -q .files[].path | grep -q ^templates/${{ matrix.runtime }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.number }}
+          FUNC_RUNTIME: ${{ matrix.runtime }}
+      - name: Install Binaries
+        run: ./hack/binaries.sh
+      - name: Allocate Cluster
+        run: ./hack/allocate.sh
+      - name: Local Registry
+        run: ./hack/registry.sh
+      - name: E2E Test ${{ matrix.runtime }}
+        run: make && make test-e2e-runtime runtime=${FUNC_RUNTIME}

@@ -1,0 +1,6 @@
+
+cat << EOF
+
+Before pushing this repository it is advisable to run a go-ci check and go lint
+
+EOF

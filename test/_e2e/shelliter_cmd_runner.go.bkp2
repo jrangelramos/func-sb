@@ -1,0 +1,137 @@
+//nolint
+package e2e
+
+import (
+	"bytes"
+	"fmt"
+	"github.com/Netflix/go-expect"
+	"github.com/hinshun/vt10x"
+	"io"
+	"os/exec"
+	"strings"
+	"testing"
+	"time"
+)
+
+type TestIteractiveShellCmdRunner struct {
+	TestShell *TestShellCmdRunner
+	T *testing.T
+	durationBeforeSend time.Duration
+	durationBeforeComplete time.Duration
+}
+
+func NewTestIteractiveShellCmdRunner(t *testing.T) *TestIteractiveShellCmdRunner {
+	testShell := NewKnFuncShellCli(t)
+	testShell.ShouldDumpOnSuccess = true
+	iterShell := TestIteractiveShellCmdRunner{
+		TestShell: testShell,
+		T: t,
+		durationBeforeSend: time.Millisecond * 1000,
+		durationBeforeComplete: time.Millisecond * 1000,
+	}
+	return &iterShell
+}
+
+func (f *TestIteractiveShellCmdRunner) Start(args ...string) *TestIteractiveCommand {
+	testCommand := TestIteractiveCommand{}
+
+	finalArgs := f.TestShell.BinaryArgs
+	if finalArgs == nil {
+		finalArgs = args
+	} else if args != nil {
+		finalArgs = append(finalArgs, args...)
+	}
+	if f.TestShell.ShouldDumpCmdLine {
+		f.T.Log(f.TestShell.Binary, strings.Join(finalArgs, " "))
+	}
+
+	c, _, err := vt10x.NewVT10XConsole()
+	if err != nil {
+		f.T.Fatal(err)
+	}
+	//defer c.Close() Called from complete function
+
+	var stderr bytes.Buffer
+	var stdout bytes.Buffer
+
+	cmd := exec.Command(f.TestShell.Binary, finalArgs...)
+	cmd.Stdin = c.Tty()
+	cmd.Stdout = io.MultiWriter(c.Tty(), &stdout)
+	cmd.Stderr = io.MultiWriter(c.Tty(), &stderr)
+	if f.TestShell.SourceDir != "" {
+		cmd.Dir = f.TestShell.SourceDir
+	}
+	// Start kn func command
+	cmd.Start()
+
+	testCommand.doneChannel	= make(chan error, 1)
+	testCommand.parentShell = f
+	testCommand.console = c
+	testCommand.stdout = &stdout
+	testCommand.stderr = &stderr
+	testCommand.cmd = cmd
+
+	go func() {
+		_, err := c.ExpectEOF()
+		testCommand.doneChannel <- err
+	}()
+
+	return &testCommand
+}
+
+type TestIteractiveCommand struct {
+	parentShell *TestIteractiveShellCmdRunner
+	console *expect.Console
+	cmd *exec.Cmd
+	doneChannel chan error
+	stderr *bytes.Buffer
+	stdout *bytes.Buffer
+}
+
+func (c *TestIteractiveCommand) Send(input ...string) *TestIteractiveCommand {
+	for _,s := range input {
+		time.Sleep(c.parentShell.durationBeforeSend)
+		c.console.Send(s)
+	}
+	return c
+}
+
+func (c *TestIteractiveCommand) Complete() TestShellCmdResult {
+
+	time.Sleep(c.parentShell.durationBeforeComplete)
+	c.console.Tty().Close()
+
+	var err error
+	select {
+	case err = <- c.doneChannel:
+		if err != nil {
+			fmt.Printf("process completed with error %v\n", err)
+		}
+	case <-time.After(3 * time.Second):
+		err = c.cmd.Process.Kill()
+		if err != nil {
+			fmt.Printf("error killing process after timeout %v\n", err)
+		} else {
+			err = fmt.Errorf("timeout occurred")
+		}
+	}
+	defer c.console.Close()
+
+	// Collect results
+	result := TestShellCmdResult{
+		Stdout: c.stdout.String(),
+		Stderr: c.stderr.String(),
+		Error:  err,
+	}
+
+	if err == nil && c.parentShell.TestShell.ShouldDumpOnSuccess {
+		c.parentShell.T.Log(result.Stdout)
+	}
+	if err != nil {
+		c.parentShell.T.Log(result.Stdout)
+		c.parentShell.T.Log(err.Error())
+		c.parentShell.T.Log(result.Stderr)
+	}
+	return result
+
+}
