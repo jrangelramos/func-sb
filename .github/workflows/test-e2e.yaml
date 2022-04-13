@@ -9,10 +9,7 @@ jobs:
       matrix:
         go: [1.16.x]
         os: ["ubuntu-latest"]
-        runtime: ["node", "go", "python", "quarkus", "springboot", "typescript"]
-      include:
-        - node:
-          default_runtime: true
+        runtime: ["go", "python", "quarkus", "springboot", "typescript"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -27,9 +24,5 @@ jobs:
         run: ./hack/registry.sh
       - name: Build
         run: make
-      - name: E2E default
-        if: ${{ matrix.default_runtime }}
-        run: make test-e2e
       - name: E2E runtime for ${{ matrix.runtime }}
-        if: ${{ !matrix.default_runtime }}
         run: make test-e2e-runtime runtime=${{ matrix.runtime }}
