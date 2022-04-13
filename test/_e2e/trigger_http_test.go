@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 // HTTP Based Function Test Validator
@@ -38,6 +39,7 @@ func (f FunctionHttpResponsivenessValidator) Validate(t *testing.T, project Func
 		req.Header.Add("Content-Type", f.contentType)
 	}
 	client := &http.Client{}
+	client.Timeout = time.Second * 15
 	resp, err := client.Do(req)
 
 	// Http Response Handling
@@ -57,7 +59,8 @@ func (f FunctionHttpResponsivenessValidator) Validate(t *testing.T, project Func
 		t.Fatalf("Expected status code 200, received %v", resp.StatusCode)
 	}
 	if f.expects != "" && !strings.Contains(string(body), f.expects) {
-		t.Fatalf("Body does not contains expected sentence [%v]", f.expects)
+		t.Fatalf("Body does not contains expected sentence [%v]\n", f.expects)
+		t.Fatalf("Body received is: %v", string(body))
 	}
 	if f.responseValidator != nil {
 		if err = f.responseValidator(string(body)); err != nil {

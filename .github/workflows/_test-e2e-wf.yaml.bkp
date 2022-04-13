@@ -7,10 +7,6 @@ on:
         type: string
         required: true
         description: Function runtime to e2e test
-      always:
-        type: boolean
-        required: false
-        description: Should run always
 
 jobs:
   e2e-test:
