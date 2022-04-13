@@ -4,11 +4,15 @@ on: [pull_request]
 
 jobs:
   test:
-    name: E2E Test for Runtimes
+    name: E2E Test for ${{ matrix.runtime }}
     strategy:
       matrix:
         go: [1.16.x]
         os: ["ubuntu-latest"]
+        runtime: ["node", "go", "python", "quarkus", "springboot", "typescript"]
+      include:
+        - node:
+          default_runtime: true
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -23,15 +27,9 @@ jobs:
         run: ./hack/registry.sh
       - name: Build
         run: make
- #     - name: E2E
- #       run: make test-e2e
-      - name: E2E go
-        run: make test-e2e-runtime runtime=go
-      - name: E2E python
-        run: make test-e2e-runtime runtime=python
-      - name: E2E quarkus
-        run: make test-e2e-runtime runtime=quarkus
-      - name: E2E springboot
-        run: make test-e2e-runtime runtime=springboot
-      - name: E2E typescript
-        run: make test-e2e-runtime runtime=typescript
+      - name: E2E default
+        if: ${{ matrix.default_runtime }}
+        run: make test-e2e
+      - name: E2E runtime for ${{ matrix.runtime }}
+        if: ${{ !matrix.default_runtime }}
+        run: make test-e2e-runtime runtime=${{ matrix.runtime }}
