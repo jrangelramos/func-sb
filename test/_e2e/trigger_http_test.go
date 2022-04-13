@@ -38,8 +38,7 @@ func (f FunctionHttpResponsivenessValidator) Validate(t *testing.T, project Func
 	if f.contentType != "" {
 		req.Header.Add("Content-Type", f.contentType)
 	}
-	client := &http.Client{}
-	client.Timeout = time.Second * 15
+	client := &http.Client{Timeout: time.Second * 15}
 	resp, err := client.Do(req)
 
 	// Http Response Handling
