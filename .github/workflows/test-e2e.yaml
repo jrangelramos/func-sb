@@ -4,7 +4,7 @@ on: [pull_request]
 
 jobs:
   test:
-    name: E2E Test 
+    name: E2E Test for Runtimes
     strategy:
       matrix:
         go: [1.16.x]
