@@ -2,19 +2,22 @@ name: Func E2E Test
 
 on: [pull_request]
 
+concurrency:
+  group: ci-e1e-${{ github.ref }}-1
+  cancel-in-progress: true
+
 jobs:
   test:
-    name: E2E Test 
+    name: E2E Test
     strategy:
       matrix:
-        go: [1.16.x]
-        os: ["ubuntu-latest"]
-    runs-on: ${{ matrix.os }}
+        runtime: ["go", "python", "quarkus", "springboot", "typescript"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go }}
+          go-version: 1.16.x
       - name: Install Binaries
         run: ./hack/binaries.sh
       - name: Allocate Cluster
@@ -23,15 +26,5 @@ jobs:
         run: ./hack/registry.sh
       - name: Build
         run: make
-      - name: E2E
-        run: make test-e2e
-      - name: E2E go
-        run: make test-e2e-runtime runtime=go
-      - name: E2E python
-        run: make test-e2e-runtime runtime=python
-      - name: E2E quarkus
-        run: make test-e2e-runtime runtime=quarkus
-      - name: E2E springboot
-        run: make test-e2e-runtime runtime=springboot
-      - name: E2E typescript
-        run: make test-e2e-runtime runtime=typescript
+      - name: E2E runtime for ${{ matrix.runtime }}
+        run: make test-e2e-runtime runtime=${{ matrix.runtime }}
